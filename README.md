@@ -10,6 +10,7 @@ iTunes playing information share (Twitter) appliet
 ## Licence
 
 * NYSL (http://www.kmonos.net/nysl/) 0.9981
+* __You use AT YOUR OWN RISK__
 
 ## Usage
 
