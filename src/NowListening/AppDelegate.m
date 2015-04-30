@@ -149,6 +149,9 @@ static const NSString *kTwitterHashTag = @"#0w0_listening";
             [self.currentSongItem.submenu addItemWithTitle:account.username
                                                     action:@selector(postTwitterWithSender:)
                                              keyEquivalent:@""];
+            [self.currentSongItem.submenu addItemWithTitle:[NSString stringWithFormat:@"%@ + Comment", account.username]
+                                                    action:@selector(postTwitterWithSender:)
+                                             keyEquivalent:@""];
         }
     }];
 }
@@ -275,7 +278,41 @@ static const NSString *kTwitterHashTag = @"#0w0_listening";
 {
     NSMenuItem *menuItem = (NSMenuItem *)sender;
     NSString   *userName = menuItem.title;
-    ACAccount  *account  = twitterAccountDictionary[userName];
+    
+    // If user name has 3 elements, enables comment mode
+    NSArray  *names            = [userName componentsSeparatedByString:@" "];
+    BOOL      isCommentEnabled = ([names count] == 3);
+    NSString *commentString    = @"";
+    
+    if (isCommentEnabled) {
+        // Update username
+        userName = names[0];
+        
+        // Display comment input alert
+        NSAlert *alert = [NSAlert alertWithMessageText:@"Edit your comment"
+                                         defaultButton:@"Post"
+                                       alternateButton:@"Cancel"
+                                           otherButton:nil
+                             informativeTextWithFormat:@""];
+        
+        NSTextField *input = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 200, 24)];
+        [alert setAccessoryView:input];
+        
+        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+        NSInteger button = [alert runModal];
+        if (button == NSAlertDefaultReturn) {
+            // Press post
+            [input validateEditing];
+            commentString = input.stringValue;
+            
+        } else {
+            // Press cancel
+            return;
+        }
+    }
+    
+    // Get target account
+    ACAccount *account = twitterAccountDictionary[userName];
     
     if (!account) {
         return;
@@ -290,8 +327,16 @@ static const NSString *kTwitterHashTag = @"#0w0_listening";
         }
         
         if (granted) {
+            // Construct post string
+            NSString *postString = [NSString stringWithFormat:@"%@", [self prettySongString]];
+            
+            if (isCommentEnabled) {
+                postString = [postString stringByAppendingString:[NSString stringWithFormat:@" // %@", commentString]];
+            }
+            postString = [postString stringByAppendingString:[NSString stringWithFormat:@" %@", (NSString *)kTwitterHashTag]];
+            
             NSURL        *url    = [NSURL URLWithString:(NSString *)kTwitterPostURL];
-            NSDictionary *params = @{@"status" : [NSString stringWithFormat:@"%@ %@", [self prettySongString], (NSString *)kTwitterHashTag]};
+            NSDictionary *params = @{@"status" : postString};
             
             SLRequest *request = [SLRequest requestForServiceType:SLServiceTypeTwitter
                                                     requestMethod:SLRequestMethodPOST
